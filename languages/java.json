@@ -1,0 +1,68 @@
+{
+  "name": "ansi_c",
+  "var_types": {
+    "int": {"init_value": "init_pythonic_int32", "size": "arch", "line": "`t` `n` = `v`;"},
+    "float": {"init_value": "init_pythonic_float", "size": "arch", "line": "`t` `n` = `v`;"},
+    "char": {"init_value": "init_pythonic_ascii_char", "size": "1", "line": "`t` `n` = `v`;"},
+    "char*": {"init_value": "init_c_stack_string", "size": "len+1", "line": "char `nt`[`l`] = `v`; char* `n` = `nt`;"}
+  },
+  "function": {
+    "definition": "`r` `n`(`a`)",
+    "arg_definition": "`t` `n`",
+    "call_signature": "`v` = `n`(`a`);",
+    "call_arg_signature": "`n`",
+    "return_definition": "return `r`;"
+  },
+  "conditional": {
+    "operations": {
+      "check_zero": {"if_lines": ["if (`v1` * 0)"],
+                     "if_code": "`f`",
+                     "else_ifs": [{
+                       "line": "",
+                       "code": ""}],
+                     "else_line": "else",
+                     "else_code": "`r`",
+                     "used_vars": ["`v1`"],
+                     "var_types": [["int"], ["float"]]}
+    }
+  },
+  "math": {
+    "operations": {
+      "normal": {"lines": ["`v1` = `v2` `o` `v3`;"],
+                 "used_vars": ["`v2`", "`v3`"],
+                 "var_types": [["int", "int", "int"], ["float", "float", "float"]],
+                 "operands": ["+", "-", "*"]},
+      "bitwise": {"lines": ["`v1` = `v2` `o` `v3`;"],
+                  "used_vars": ["`v2`", "`v3`"],
+                  "var_types": [["int", "int", "int"]],
+                  "operands": ["^", "&", "|"]},
+      "bool": {"lines": ["`v1` = `v2` `o` `v3`;"],
+                  "used_vars": ["`v2`", "`v3`"],
+                  "var_types": [["int", "int", "int"]],
+                  "operands": ["&&", "||"]}
+    }
+  },
+  "strings": {
+    "operations": {
+      "length": {"lines": ["`v1` = strlen(`v2`);"],
+                 "used_vars": ["`v2`"],
+                 "var_types": [["int", "char*"]]}
+    }
+  },
+  "memory": {
+    "operations": {
+      "assign": {"lines": ["`v1` = `v2`;"],
+                 "used_vars": ["`v2`"],
+                 "var_types": [["int", "int"], ["char", "char"], ["float", "float"], ["char*", "char*"]]},
+      "assign char": {"lines": ["`v1`[0] = `v2`;"],
+                      "used_vars": ["`v2`"],
+                      "var_types": [["char*", "char"]]}
+    }
+  },
+  "code_types": ["function", "math", "memory", "strings", "conditional"],
+  "features": {"gen_vars_outside_functions": "0",
+               "gen_code_outside_functions": "0",
+               "code_blocks_begin_with_var_creation": "1",
+               "code_blocks": "find_bracket_code_block",
+               "must_use_vars": "0"}
+}

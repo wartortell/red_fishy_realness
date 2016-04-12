@@ -3,10 +3,10 @@ __author__ = 'wartortell'
 import random
 import string
 
-from obfuser import Obfuser
+from fishier import Fishier
 
 
-class ObfuserCPP(Obfuser):
+class FishierCpp(Fishier):
     def create_code(self):
         pass
 

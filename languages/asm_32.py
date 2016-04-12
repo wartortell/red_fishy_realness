@@ -1,9 +1,9 @@
 __author__ = 'rwartell'
 
-from obfuser import Obfuser
+from fishier import Fishier
 
 
-class ObfuserAsm32(Obfuser):
+class FishierAsm32(Fishier):
     def create_code(self):
         pass
 

@@ -1,23 +1,23 @@
 __author__ = 'wartortell'
 
-from ansi_c import ObfuserAnsiC
-from asm_32 import ObfuserAsm32
-from asm_64 import ObfuserAsm64
-from cpp import ObfuserCPP
-from delphi import ObfuserDelphi
-from golang import ObfuserGolang
-from python import ObfuserPython
+from ansi_c import FishierAnsiC
+from asm_32 import FishierAsm32
+from asm_64 import FishierAsm64
+from cpp import FishierCpp
+from delphi import FishierDelphi
+from golang import FishierGolang
+from java import FishierJava
+from perl import FishierPerl
+from python import FishierPython
+from python27 import FishierPython27
 
-obfusion_classes = {"ansi_c": ObfuserAnsiC,
-                    "asm_32": ObfuserAsm32,
-                    "asm_64": ObfuserAsm64,
-                    "cpp": ObfuserCPP,
-                    "delphi": ObfuserDelphi,
-                    "golang": ObfuserGolang,
-                    "python": ObfuserPython}
-
-#code_parsers = {"cpp": cpp.parse_real_code,
-#                "delphi": delphi.parse_real_code}
-
-#code_generators = {"cpp": cpp.create_code,
-#                   "delphi": delphi.create_code}
+fishiers = {"ansi_c": FishierAnsiC,
+            "asm_32": FishierAsm32,
+            "asm_64": FishierAsm64,
+            "cpp": FishierCpp,
+            "delphi": FishierDelphi,
+            "golang": FishierGolang,
+            "java": FishierJava,
+            "perl": FishierPerl,
+            "python": FishierPython,
+            "python27": FishierPython27}

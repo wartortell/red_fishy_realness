@@ -8,7 +8,7 @@ import string
 from fishier import Fishier
 
 
-class FishierAnsiC(Fishier):
+class FishierJava(Fishier):
     def __init__(self, real_code, config):
         Fishier.__init__(self, real_code, config)
         with open(os.path.join("languages", "ansi_c.json"), "r") as f:
@@ -24,7 +24,7 @@ class FishierAnsiC(Fishier):
         self.code_clean = self.code_original.replace(";", ";\n").replace("{", "\n{\n").replace("}", "\n}\n").replace("\n\n", "\n").replace("\n\n", "\n").split("\n")
 
         while True:
-            if self.code_clean[0].strip().startswith("#pragma") or self.code_clean[0].strip().startswith("#include"):
+            if self.code_clean[0].strip().startswith("package") or self.code_clean[0].strip().startswith("import"):
                 self.obfuscated_prefix.append(self.code_clean[0])
                 del self.code_clean[0]
             elif self.code_clean[0].strip() == "":

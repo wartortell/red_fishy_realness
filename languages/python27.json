@@ -1,0 +1,99 @@
+{
+  "name": "python27",
+  "var_types": {
+    "bool": {"init_value": "True,False", "size": "1", "line": "`n` = `v`"},
+    "int": {"init_value": "init_pythonic_int32", "size": "arch", "line": "`n` = `v`"},
+    "float": {"init_value": "init_pythonic_float", "size": "arch", "line": "`n` = `v`"},
+    "char": {"init_value": "init_pythonic_ascii_char", "size": "1", "line": "`n` = `v`"},
+    "string": {"init_value": "init_pythonic_ascii_string", "size": "len", "line": "`n` = `v`"},
+    "int list": {"init_value": "init_pythonic_list_int", "size": "len", "line": "`n` = `v`"},
+    "string list": {"init_value": "init_pythonic_list_string", "size": "len", "line": "`n` = `v`"},
+    "dict string int": {"init_value": "init_pythonic_dict_string_int", "size": "len", "line": "`n` = `v`"},
+    "dict string string": {"init_value": "init_pythonic_dict_string_string", "size": "len", "line": "`n` = `v`"}
+  },
+  "function": {
+    "definition": "def `n`(`a`):",
+    "arg_definition": "`n`",
+    "return_definition": "return `r`",
+    "call_signature": "`v` = `n`(`a`)",
+    "call_arg_signature": "`n`"
+  },
+  "conditional": {
+    "operations": {
+      "check_zero": {"if_lines": ["if `v1`*0:"],
+                     "if_code": "`f`",
+                     "else_ifs": [{
+                       "line": "",
+                       "code": ""}],
+                     "else_line": "else:",
+                     "else_code": "`r`",
+                     "used_vars": ["`v1`"],
+                     "var_types": [["int"], ["float"]]}
+    }
+  },
+  "math": {
+    "operations": {
+      "normal": {"lines": ["`v1` = `v2` `o` `v3`"],
+                 "used_vars": ["`v2`", "`v3`"],
+                 "var_types": [["int", "int", "int"], ["float", "float", "float"]],
+                 "operands": ["+", "-", "*"]},
+      "bitwise": {"lines": ["`v1` = `v2` `o` `v3`"],
+                  "used_vars": ["`v2`", "`v3`"],
+                  "var_types": [["int", "int", "int"]],
+                  "operands": ["^", "&", "|"]},
+      "boolean": {"lines": ["`v1` = `v2` `o` `v3`"],
+                  "used_vars": ["`v2`", "`v3`"],
+                  "var_types": [["bool", "bool", "bool"]],
+                  "operands": ["and", "or"]}
+    }
+  },
+  "memory": {
+    "operations": {
+      "append list": {"lines": ["`v1`.append(`v2`)"],
+                      "used_vars": ["`v2`"],
+                      "var_types": [["int list", "int"], ["string list", "string"]]},
+      "prepend list": {"lines": ["`v1`.insert(0, `v2`)"],
+                       "used_vars": ["`v2`"],
+                       "var_types": [["int list", "int"], ["string list", "string"]]},
+      "assign": {"lines": ["`v1` = `v2`"],
+                 "used_vars": ["`v2`"],
+                 "var_types": [["char", "char"], ["int", "int"], ["int list", "int list"],["string", "string"], ["bool", "bool"], ["float", "float"]]},
+      "assign dict": {"lines": ["`v1`[`v2`] = `v3`", "`v4`[`v5`] = `v1`[`v2`]"],
+                      "used_vars": ["`v1`", "`v2`", "`v3`", "`v5`"],
+                      "var_types": [["dict string int", "string", "int", "dict string int", "string"], ["dict string string", "string", "string", "dict string string", "string"]]}
+    }
+  },
+  "strings": {
+    "operations": {
+      "length": {"lines": ["`v1` = len(`v2`)"],
+                 "used_vars": ["`v2`"],
+                 "var_types": [["int", "string"], ["int", "string list"]]},
+      "compare": {"lines": ["`v1` = (`v2` == `v3`)"],
+                  "used_vars": ["`v2`", "`v3`"],
+                  "var_types": [["bool", "int", "int"], ["bool", "char", "char"], ["bool", "string", "string"], ["bool", "float", "float"]]},
+      "copy first byte": {"lines": ["`v1` = `v2`[0]"],
+                  "used_vars": ["`v2`"],
+                  "var_types": [["char", "string"]]},
+      "copy last byte": {"lines": ["`v1` = `v2`[-1]"],
+                  "used_vars": ["`v2`"],
+                  "var_types": [["char", "string"]]},
+      "append byte": {"lines": ["`v1` = `v2` + `v3`"],
+                      "used_vars": ["`v2`", "`v3`"],
+                      "var_types": [["string", "string", "char"]]},
+      "dict string": {"lines": ["`v1`[`v2`] = `v3`", "`v4`[`v5`] = `v6`", "`v7`[`v8`] = `v1`[`v2`] + `v4`[`v5`]"],
+                      "used_vars": ["`v1`", "`v2`", "`v4`", "`v5`"],
+                      "var_types": [["dict string string", "string", "string", "dict string string", "string", "string", "dict string string", "string"]]},
+      "append 1 string": {"lines": ["`v1`.append(`v2`)", "`v3` = `v1`[-1]"],
+                          "used_vars": ["`v1`", "`v2`"],
+                          "var_types": [["string list", "string", "string"]]},
+      "append 2 strings": {"lines": ["`v1`.extend([`v2`, `v3`])", "`v4` = `v1`[-1]"],
+                           "used_vars": ["`v1`", "`v2`", "`v3`"],
+                           "var_types": [["string list", "string", "string", "string"]]}
+    }
+  },
+  "code_types": ["function", "math", "memory", "strings", "conditional"],
+  "features": {"gen_vars_outside_functions": "1",
+               "gen_code_outside_functions": "1",
+               "code_blocks": "find_tab_code_block",
+               "must_use_vars": "0"}
+}

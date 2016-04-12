@@ -6,29 +6,31 @@ import random
 import logging
 import argparse
 
-from languages import obfusion_classes
+from languages import fishiers
 
 
-class ObfusionConfiguration:
-    def __init__(self, arch):
+class RFRConfiguration:
+    def __init__(self, arch, recursion):
 
         self.arch = arch
+        self.recursion = recursion
 
         self.logger = logging.getLogger("Obfusion Configuration")
         self.logger.setLevel(logging.INFO)
 
-        self.weights = {"function": 1,
-                        "conditional": 1,
+        self.weights = {"function": 2,
+                        "conditional": 2,
                         #"loop": 1,
                         "math": 10,
-                        "string": 10,
+                        "strings": 10,
+                        "memory": 10,
                         #"api": 1,
                         #"anti_vm": 1,
                         #"anti_dis": 1,
                         #"anti_debug": 1,
                         #"sleep": 0,
-                        "sleep_math": 1,
-                        "real": 1}
+                        #"sleep_math": 1,
+                        "real": 5}
 
         # The list used by Obfusion when determining which code block will be used
         self.weighted_list = []
@@ -116,6 +118,7 @@ class ObfusionConfiguration:
         print("\nCurrent Weights:\n---------------------")
         for key in sorted(self.weights.keys()):
             print("%s: %2.2f%%" % (key, 100.0*float(self.weights[key])/float(len(self.weighted_lookup))))
+        print("\n")
 
     def choose_weighted(self):
         """
@@ -138,8 +141,8 @@ class ObfusionConfiguration:
         return random.choice(self.code_types)
 
 
-class Obfusion:
-    def __init__(self, arch, language, real_code_path, obf_code_path, run=False):
+class RedFishRealness:
+    def __init__(self, arch, language, real_code_path, obf_code_path, recursion, run=False):
         # Up the maximum recursion limit
         sys.setrecursionlimit(50000)
 
@@ -148,26 +151,27 @@ class Obfusion:
         self.language = language
         self.real_code_path = real_code_path
         self.obf_code_path = obf_code_path
+        self.recursion = recursion
         self.real_code = {}
         self.fake_globals = []
         self.obfuscated_functions = []
 
         # Create the configuration
-        self.config = ObfusionConfiguration(self.arch)
+        self.config = RFRConfiguration(self.arch, self.recursion)
 
         # Create the Obfuser Class
-        self.obfuser = obfusion_classes[language](real_code_path, self.config)
+        self.fishier = fishiers[language](real_code_path, self.config)
 
         if run:
             # Show the current weights being used
             self.config.show_weights()
 
             # Create the obfuscated code
-            self.obfuser.create_code()
+            self.fishier.create_code()
 
             # Output the obfuscated code
             with open(obf_code_path, "w") as f:
-                f.write(self.obfuser.obfuscated_code_string)
+                f.write(self.fishier.obfuscated_code_string)
 
     def output_code(self, file_pointer, code, tab_count):
         for l in code:
@@ -208,7 +212,7 @@ class Obfusion:
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Create an obfuscated piece of code")
     parser.add_argument('-l', '--language', dest='language', default="cpp",
-                        choices=['ansi_c', 'asm_32', 'asm_64', 'cpp', 'delphi', 'golang', 'python'],
+                        choices=['ansi_c', 'asm_32', 'asm_64', 'cpp', 'delphi', 'golang', 'java', 'perl', 'python', 'python27'],
                         help='the language you want to generate obfuscated code in')
     parser.add_argument('-o', '--output', dest='output', required=True,
                         help='the filename you want to output to')
@@ -216,6 +220,7 @@ def parse_arguments():
                         help='the path to the file containing your real code')
     parser.add_argument('-a', '--arch', dest='arch', default="Win_x86",
                         choices=['Win_x86', 'Win_x64', 'POSIX_x86', 'POSIX_x64'], help='the architecture to target')
+    parser.add_argument('-r', '--recursion', dest='recursion', default="4", help='number of levels of recursion to allow')
     return parser.parse_args()
 
 
@@ -223,48 +228,10 @@ def main():
 
     args = parse_arguments()
 
-    obf = Obfusion(args.arch, args.language, args.code, args.output, run=True)
+    realness = RedFishRealness(args.arch, args.language, args.code, args.output, args.recursion, run=True)
 
-    del obf
-"""
-    # Get a list of the real code lines
-    with open(args.code, "r") as real_code_file:
-        real_code_lines = real_code_file.readlines()
+    del realness
 
-    # Create the fake global variables
-    real_code, fake_globals = languages.code_parsers[args.language](real_code_lines)
-
-    # Created the obfuscated code base
-    obfuscated_functions = languages.code_generators[args.language](real_code, fake_globals)
-
-    # Create the list of all globals
-    full_globals = real_code["globals"]
-    for i in range(len(fake_globals)):
-        full_globals.append(fake_globals[i]["line"])
-    #random.shuffle(full_globals)
-
-    with open("temp.c", "w") as code_file:
-
-        for i in range(len(real_code["imports"])):
-            code_file.write("%s\n" % real_code["imports"][i])
-        code_file.write("\n")
-
-        for i in range(len(full_globals)):
-            code_file.write("%s\n" % full_globals[i])
-        code_file.write("\n")
-
-        for i in range(len(obfuscated_functions)):
-            code_file.write("%s\n" % obfuscated_functions[i])
-        code_file.write("\n")
-
-    if args.type == "code":
-        if os.path.isfile(args.filename):
-            os.remove(args.filename)
-        os.rename("temp.c", args.filename)
-    elif args.type == "binary":
-        if args.language == "cpp":
-            os.system("tcc.exe temp.c -o %s" % args.filename)
-"""
 
 if __name__ == "__main__":
     main()

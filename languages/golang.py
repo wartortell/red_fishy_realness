@@ -1,228 +1,26 @@
+import os
 import re
 import copy
+import json
 import string
 import random
 
-from obfuser import Obfuser
+from fishier import Fishier
 
 
-class ObfuserGolang(Obfuser):
-    def create_code(self):
-
-        self.code_includes = []
-        self.code_macros = []
-        self.code_functions = []
-
-        self.code_types = ["bool", "int", "float32", "byte", "string",
-                           "[]int", "[]string",
-                           "map[string]int", "map[string]string"]
+class FishierGolang(Fishier):
+    def __init__(self, real_code, config):
+        Fishier.__init__(self, real_code, config)
+        with open(os.path.join("languages", "golang.json"), "r") as f:
+            self.language = self.byteify_json(json.load(f))
 
         self.regex_function = "^func"
         self.regex_conditional = "^(if|else if|else)"
         self.regex_loop = "^(for|while)"
+        self.regex_return = "^return"
+        self.regex_assignment = "^var\s\w"
 
-        # Walk the original code and break up
-        # TODO: Replace this with regex replace
-        # TODO: Test for use of a different amount of spaces and replace with 4
-        self.code_clean = self.code_original.replace("{", "\n{\n").replace("}", "\n}\n").replace("\n\n", "\n").replace("\n\n", "\n").split("\n")
-
-        while True:
-            if self.code_clean[0].strip().startswith("package") or self.code_clean[0].strip().startswith("import"):
-                self.obfuscated_prefix.append(self.code_clean[0])
-                del self.code_clean[0]
-            elif self.code_clean[0].strip() == "":
-                del self.code_clean[0]
-            else:
-                break
-
-        code_block = self.create_code_block(self.code_clean, {"name": "", "return": "", "args": []}, [],
-                                            add_return=False, code_levels=3, in_func=False)
-
-        self.fill_obfuscated_code(code_block["code"])
-        self.obfuscated_code_string = self.fill_code_string(self.obfuscated_code, 0)
-
-    def create_code_block(self, real_code, current_signature, lv,
-                          add_return=False, code_levels=10, in_func=False):
-        ret = {"code": [], "used_vars": []}
-
-        # Track the local variables to make sure they get used up
-        unused_locals = []
-
-        old_local_vars = copy.copy(lv)
-
-        # Generate local variables for the code block
-        new_local_vars = []
-        if in_func:
-            for i in range(len(self.code_types)):
-                for j in range(random.randint(1, 2)):
-                    new_local_vars.append(self.create_random_variable(self.code_types[i], "lvar"))
-        random.shuffle(new_local_vars)
-
-        # Add them to the code block return
-        for lv in new_local_vars:
-            ret["code"].append(lv["line"])
-            unused_locals.append(lv)
-
-        local_vars = old_local_vars
-        local_vars.extend(new_local_vars)
-
-        # Keep creating code until there isn't any more real code to include
-        # As real code is used, it will be removed from the list
-        while True:
-            r = self.config.choose_weighted()
-
-            # If there's no real code left but we have unused local variables, focus what we create to use them
-            if (not real_code) and unused_locals and in_func:
-                unused_type = unused_locals[0]["type"]
-                if unused_type in ["int", "float32", "bool", "[]int", "map[string]int"]:
-                    r = "math"
-                elif unused_type in ["byte", "string", "[]string", "map[string]string"]:
-                    r = "string"
-
-            # Force real code to be used immediately if it is the continuation of an if else block
-            # Otherwise there can be code between if and else, causing syntax errors
-            elif real_code and re.match("^(else if|else)", real_code[0]):
-                r = "real"
-
-            gen_code = {}
-
-            # Handle functions
-            if (r == "function") and in_func:
-                if code_levels <= 0:
-                    continue
-
-                # Create the new function signature
-                signature = {"name": "", "return": random.choice(self.code_types), "args": []}
-                while (signature["name"] == "") or (signature["name"] in self.used_functions):
-                    signature["name"] = "sub_%s" % self.random_lower_alphanum(random.randint(5, 32))
-                self.used_functions.add(signature["name"])
-
-                # Create random arguments for the function
-                for arg_count in range(random.randint(1, 5)):
-                    signature["args"].append(self.create_random_variable(random.choice(self.code_types), "avar"))
-
-                # Create the function call
-                return_var = self.pick_unused_variable(signature["return"], unused_locals, current_signature["args"]+local_vars)
-                func_call = "%s = %s(" % (return_var, signature["name"])
-                if return_var in unused_locals:
-                    del unused_locals[return_var]
-
-                gen_code = {"code": [], "used_vars": []}
-
-                arg_list = []
-                for a in signature["args"]:
-                    new_arg = self.pick_unused_variable(a["type"], unused_locals, current_signature["args"]+local_vars)
-                    arg_list.append(new_arg)
-                func_call += "%s)" % ", ".join(arg_list)
-                gen_code["code"].append(func_call)
-                gen_code["used_vars"] = arg_list
-
-                # Create the function's code
-                self.obfuscated_functions.append(self.create_code_function([], signature, [], code_levels, add_return=True))
-
-            # Handle MATH!
-            elif (r == "math") and in_func:
-                gen_code = self.create_code_math(unused_locals, current_signature, local_vars)
-
-            # Handle API function calls
-            elif (r == "api") and in_func:
-                gen_code = self.create_code_api(unused_locals, current_signature, local_vars)
-
-            # Handle conditionals
-            elif (r == "conditional") and in_func:
-                if code_levels <= 0:
-                    continue
-
-                gen_code = self.create_code_conditional([], unused_locals, current_signature, local_vars, code_levels, in_func)
-
-            # Handle loops
-            elif (r == "loop") and in_func:
-                if code_levels <= 0:
-                    continue
-
-                gen_code = self.create_code_loop()
-
-            # Handle string manipulations
-            elif (r == "string") and in_func:
-                gen_code = self.create_code_string_work(unused_locals, current_signature, local_vars)
-
-            # Handle sleep
-            elif (r == "sleep") and in_func:
-                gen_code = self.create_code_sleep(unused_locals, current_signature, local_vars)
-
-            # Handle real code
-            elif r == "real":
-                # If there's no real code left and all the local vars have been used, end the code block
-                if (not real_code) and ((not len(unused_locals)) or (not in_func)):
-
-                    # Add a return value if it says to
-                    if add_return:
-                        v1 = self.pick_unused_variable(current_signature["return"], unused_locals, current_signature["args"]+local_vars)
-                        ret["code"].append("return %s" % v1)
-                    break
-
-                # Otherwise, if there's no more real code, keep using up vars
-                elif not real_code:
-                    continue
-
-                # Get rid of bracket lines and empty lines
-                if real_code[0].strip() in ["{", "}", ""]:
-                    del real_code[0]
-                    continue
-
-                if re.match(self.regex_conditional, real_code[0].strip()) or \
-                   re.match(self.regex_loop, real_code[0].strip()) or \
-                   re.match(self.regex_function, real_code[0].strip()):
-                    block = {"line": real_code[0].strip(), "code_block": []}
-
-                    end_of_block = self.find_code_block(real_code, 1)
-
-                    cb_in_func = in_func
-                    if re.match(self.regex_function, real_code[0].strip()):
-                        cb_in_func = True
-
-                    print real_code[0]
-                    new_code_block = self.create_code_block(real_code[1:end_of_block], current_signature,
-                                                            local_vars, False, code_levels-1, cb_in_func)
-                    block["code_block"] = new_code_block["code"]
-
-                    gen_code = {"code": [block], "used_vars": new_code_block["used_vars"]}
-
-                    real_code = real_code[end_of_block:]
-
-                else:
-                    ret["code"].append("%s" % real_code[0].strip())
-                    print real_code[0]
-                    del real_code[0]
-
-            if gen_code:
-                ret["code"].extend(gen_code["code"])
-                for new_arg in gen_code["used_vars"]:
-                    ret["used_vars"].append(new_arg)
-                    for i in range(len(unused_locals)):
-                        if unused_locals[i]["name"] == new_arg:
-                            del unused_locals[i]
-                            break
-
-        ret["used_vars"] = list(set(ret["used_vars"]))
-        return ret
-
-    def create_code_function(self, real_code, signature, local_vars, code_levels, add_return=False):
-        func = {"line": "", "code_block": []}
-        func["line"] += "func %s(" % signature["name"]
-
-        sig_args = []
-        for argument in signature["args"]:
-            sig_args.append("%s %s" % (argument["name"], argument["type"]))
-        func["line"] += "%s) %s" % (", ".join(sig_args), signature["return"])
-
-        # Create the function code block
-        code_block = self.create_code_block(real_code, signature, [],
-                                            add_return=add_return, code_levels=(code_levels-1), in_func=True)
-        func["code_block"] = code_block["code"]
-
-        return func
-
+    """
     def create_code_math(self, unused_locals, current_signature, local_vars):
         ret = []
         used_vars = []
@@ -273,6 +71,7 @@ class ObfuserGolang(Obfuser):
             used_vars.extend([v1, v2])
 
         return {"code": ret, "used_vars": used_vars}
+
 
     def create_code_api(self, unused_locals, current_signature, local_vars):
         ret = {"code": [], "used_vars": []}
@@ -403,16 +202,9 @@ class ObfuserGolang(Obfuser):
     def create_code_sleep(self, unused_locals, current_signature, local_vars):
         return {"code": [], "used_vars": []}
 
-    def pick_unused_variable(self, var_type, unused, backup):
-        """
-        Description:
-            Pick a randomized variable to use
 
-        :param var_type: the type of variable you want to use
-        :param args: list of currently available function parameters
-        :param local_vars: list of currently available local variables
-        :return: string: the variable name to use
-        """
+    def pick_unused_variable(self, var_type, unused, backup):
+
 
         for arg in unused:
             if arg["type"] == var_type:
@@ -426,15 +218,7 @@ class ObfuserGolang(Obfuser):
         return random.choice(c)
 
     def pick_random_variable(self, var_type, args, local_vars):
-        """
-        Description:
-            Pick a randomized variable to use
 
-        :param var_type: the type of variable you want to use
-        :param args: list of currently available function parameters
-        :param local_vars: list of currently available local variables
-        :return: string: the variable name to use
-        """
 
         use_me = random.randint(1, 3)
 
@@ -459,15 +243,9 @@ class ObfuserGolang(Obfuser):
                     if c["type"] == var_type:
                         return c["name"]
                 use_me = 1
+"
 
     def create_random_variable(self, var_type, prefix):
-        """
-        Description:
-            Generate a randomized variable
-        :param var_type: string
-        :param prefix: string
-        :return: dict
-        """
 
         v = {"type": var_type, "name": ""}
         while (v["name"] == "") or (v["name"] in self.used_variables):
@@ -504,7 +282,7 @@ class ObfuserGolang(Obfuser):
         self.used_variables.add(v["name"])
 
         return v
-
+    """
     def find_code_block(self, code_block, index):
         brackets = 1
 
@@ -527,6 +305,18 @@ class ObfuserGolang(Obfuser):
 
         return line_index
 
+    def clean_code(self):
+        self.code_clean = self.code_original.replace("{", "\n{\n").replace("}", "\n}\n").replace("\n\n", "\n").replace("\n\n", "\n").split("\n")
+
+        while True:
+            if self.code_clean[0].strip().startswith("package") or self.code_clean[0].strip().startswith("import"):
+                self.obfuscated_prefix.append(self.code_clean[0])
+                del self.code_clean[0]
+            elif self.code_clean[0].strip() == "":
+                del self.code_clean[0]
+            else:
+                break
+
     def fill_obfuscated_code(self, code_block):
         self.obfuscated_code = []
         self.obfuscated_code.extend(self.obfuscated_prefix)
@@ -539,12 +329,18 @@ class ObfuserGolang(Obfuser):
         for l in code_block:
             if type(l) is str:
                 ret += "%s%s\n" % (current_tab, l)
-            elif type(l) is dict:
-                if l["line"].startswith("else"):
-                    ret = ret[:-2]
 
-                ret += "%s%s {\n" % (current_tab, l["line"])
+            elif type(l) is dict:
+                if "line" in l:
+                    ret += "%s%s {\n" % (current_tab, l["line"])
+                elif "lines" in l:
+                    for line in l["lines"]:
+                        ret += "%s%s\n" % (current_tab, line)
+                    ret = ret[:-1] + " {\n"
                 ret += self.fill_code_string(l["code_block"], tab_count+1)
-                ret += "%s} \n\n" % (current_tab)
+                ret += "%s} \n\n" % current_tab
+
         return ret
 
+    def post_process_code_string(self):
+        self.obfuscated_code_string = re.sub("}(\s+)else(\s+){", "} else {", self.obfuscated_code_string)

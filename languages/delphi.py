@@ -1,9 +1,9 @@
 __author__ = 'Wartortell'
 
-from obfuser import Obfuser
+from fishier import Fishier
 
 
-class ObfuserDelphi(Obfuser):
+class FishierDelphi(Fishier):
     def create_code(self):
         pass
 

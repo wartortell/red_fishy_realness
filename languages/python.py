@@ -1,12 +1,18 @@
 import re
 import copy
+import json
 import string
 import random
 
-from obfuser import Obfuser
+from fishier import Fishier
 
 
-class ObfuserPython(Obfuser):
+class FishierPython(Fishier):
+    def __init__(self, real_code, config):
+        super(FishierPython, self).__init__(real_code, config)
+        with open("language_configs.json", "r") as f:
+            self.language = json.load(f)["python27"]
+
     def create_code(self):
 
         self.code_includes = []
@@ -40,12 +46,6 @@ class ObfuserPython(Obfuser):
         self.fill_obfuscated_code(code_block["code"])
         self.obfuscated_code_string = self.fill_code_string(self.obfuscated_code, 0)
 
-    def create_code_fake_globals(self):
-        for i in range(len(self.code_types)):
-            for j in range(random.randint(5, 15)):
-                g = self.create_random_variable(self.code_types_dict[i], "gvar")
-                self.code_fake_globals.append(g)
-
     def create_code_block(self, real_code, current_signature, lv,
                           add_return=False, code_levels=10, in_func=False):
         ret = {"code": [], "used_vars": []}
@@ -56,6 +56,7 @@ class ObfuserPython(Obfuser):
 
         # Generate local variables for the code block
         new_local_vars = []
+
         for i in range(len(self.code_types)):
             for j in range(random.randint(1, 2)):
                 new_local_vars.append(self.create_random_variable(self.code_types[i], "lvar"))
